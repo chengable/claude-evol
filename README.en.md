@@ -28,6 +28,7 @@ claude-evol/
 │   └── hooks.json                     # PostToolUse/Stop hooks
 ├── scripts/
 │   ├── state-manager.py               # State manager (stdlib only)
+│   ├── simplify-transcript.py         # Transcript simplifier (Hermes-style compression)
 │   └── requirements.txt               # Python >= 3.8
 └── README.md
 ```
@@ -104,10 +105,11 @@ Information found in conversation
 
 ```
 skills/claude-evol/SKILL.md (orchestrator)
+  ├── [Call] scripts/state-manager.py (get transcript paths)
+  ├── [Call] scripts/simplify-transcript.py (Hermes-style compression: strip noise, one-line tool summaries)
   ├── [Fork] agents/claude-evol-reviewer.md (review agent, haiku model)
-  │     ├── Analyze conversation → three-category classification
+  │     ├── Read simplified transcript → three-category classification
   │     └── Output: structured JSON suggestions
-  ├── [Call] scripts/state-manager.py (read/write evol_state.json)
   └── [Write] skills/, CLAUDE.md, .claude/rule/
 
 hooks/hooks.json
@@ -129,6 +131,10 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get _iters_since_review
 
 # Check transcript path for pending review
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-transcript
+
+# Simplify transcript (strip noise, compress tool output)
+python ${CLAUDE_PLUGIN_ROOT}/scripts/simplify-transcript.py /path/to/transcript.jsonl
+# Output: /path/to/simple_transcript.jsonl
 ```
 
 ## Risks & Mitigations

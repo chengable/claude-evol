@@ -40,9 +40,9 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-state
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-pending
 ```
 
-### 2. 获取会话 Transcript
+### 2. 获取并简化 Transcript
 
-Stop hook 在写 flag 时记录了 `transcript_path`（来自 hook stdin），直接读取即可：
+Stop hook 在写 flag 时记录了 `transcript_path`（来自 hook stdin），获取路径后先简化再审查：
 
 ```bash
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-transcript
@@ -51,13 +51,29 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-transcript
 
 如果 `found: false`（跨机器或文件被清理），则使用当前对话上下文作为审查素材。
 
+**对每个 transcript 执行简化**（Hermes 风格压缩，不依赖 LLM）：
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/scripts/simplify-transcript.py /path/to/transcript.jsonl
+# 输出：/path/to/simple_transcript.jsonl
+# 效果：通常缩减 70-80%，丢弃 attachment/system/metadata，tool 输出转一行摘要
+```
+
+简化脚本会：
+- 丢弃 `attachment`、`system`、`file-history-snapshot` 及元数据类型
+- 丢弃 assistant 的 `thinking` 块
+- 工具输出转为一行摘要：`[tool:Bash] ran 'git diff' -> exit 0, 47 lines`
+- 重复工具输出标记为 `[Duplicate tool output]`
+- 大 tool_call 参数截断（>500 chars）
+- 图片/多模态替换为 `[screenshot]` 占位符
+
 ### 3. 启动审查 Agent
 
-使用 Fork 模式启动审查 Agent，传入 transcript 文件或当前对话上下文：
+使用 Fork 模式启动审查 Agent，传入**简化后的** transcript 文件：
 
 ```
 Fork agent: claude-evol-reviewer
-Input: 上一步获取的 transcript JSONL 文件路径，或当前对话摘要
+Input: 简化后的 transcript 路径（simple_*.jsonl）
 Task: 分析对话，执行三类进化判断（Skill/CLAUDE.md/Rule）
 Output: 结构化 JSON 建议列表
 ```

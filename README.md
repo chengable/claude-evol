@@ -28,6 +28,7 @@ claude-evol/
 │   └── hooks.json                     # PostToolUse/Stop Hook
 ├── scripts/
 │   ├── state-manager.py               # 状态管理器（纯标准库）
+│   ├── simplify-transcript.py         # Transcript 简化器（Hermes 风格压缩）
 │   └── requirements.txt               # Python >= 3.8
 └── README.md
 ```
@@ -104,10 +105,11 @@ Stop Hook → check-all --set-flag（达标写入标记 + 终端提醒）
 
 ```
 skills/claude-evol/SKILL.md（主编排）
+  ├── [调用] scripts/state-manager.py（获取 transcript 路径）
+  ├── [调用] scripts/simplify-transcript.py（Hermes 风格压缩：去噪音、tool 输出一行摘要）
   ├── [Fork] agents/claude-evol-reviewer.md（审查 Agent，haiku 模型）
-  │     ├── 分析对话 → 三分类判断
+  │     ├── 读取简化后的 transcript → 三分类判断
   │     └── 输出：结构化 JSON 建议
-  ├── [调用] scripts/state-manager.py（读写 evol_state.json）
   └── [写入] skills/、CLAUDE.md、.claude/rule/
 
 hooks/hooks.json
@@ -129,6 +131,10 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get _iters_since_review
 
 # 查看待审查的 session transcript 路径
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-transcript
+
+# 简化 transcript（去噪音、压缩 tool 输出）
+python ${CLAUDE_PLUGIN_ROOT}/scripts/simplify-transcript.py /path/to/transcript.jsonl
+# 输出：/path/to/simple_transcript.jsonl
 ```
 
 ## 风险与缓解
