@@ -42,7 +42,7 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-pending
 
 ### 2. 获取会话 Transcript
 
-Stop hook 在写 flag 时记录了 `CLAUDE_CODE_SESSION_ID`，通过 `get-transcript` 查找对应的 session 文件：
+Stop hook 在写 flag 时记录了 `transcript_path`（来自 hook stdin），直接读取即可：
 
 ```bash
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-transcript
@@ -116,7 +116,7 @@ Hook 在后台持续工作，不需要手动调用：
 ```
 PostToolUse Hook ─→ increment _iters_since_review
      ↓
-Stop Hook ─→ check-all --set-flag（达标写入标记文件 + 记录 session_id）
+Stop Hook ─→ check-all --set-flag（达标写入标记文件，记录 transcript_path）
      ↓
 SessionStart Hook ─→ get-pending（检测标记，通知用户）
      ↓

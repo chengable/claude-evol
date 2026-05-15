@@ -85,14 +85,20 @@ def save_state(state: dict):
 
 # ---------- 子命令 ----------
 
+def read_hook_stdin() -> dict | None:
+    """读取 hook 通过 stdin 传入的 JSON，非 hook 调用时返回 None"""
+    try:
+        raw = sys.stdin.read()
+        if not raw.strip():
+            return None
+        return json.loads(raw)
+    except (json.JSONDecodeError, IOError):
+        return None
+
+
 def cmd_increment(counter_name: str):
     state = load_state()
     state["counters"][counter_name] = state["counters"].get(counter_name, 0) + 1
-    # PostToolUse 在活跃会话中运行，能拿到 CLAUDE_CODE_SESSION_ID
-    # 缓存下来供 Stop hook 使用（Stop hook 子进程拿不到此环境变量）
-    sid = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
-    if sid:
-        state["_cached_session_id"] = sid
     save_state(state)
     print(state["counters"][counter_name])
 
@@ -119,7 +125,6 @@ def cmd_reset_all():
     state = load_state()
     state["counters"] = {}
     state["pending_review"] = False
-    state.pop("_cached_session_id", None)
     save_state(state)
     # 同时删除标记文件
     flag_path = get_flag_path()
@@ -160,13 +165,16 @@ def cmd_check_all(set_flag: bool = False):
     if set_flag and any_reached:
         state["pending_review"] = True
         save_state(state)
-        # Stop hook 子进程拿不到 CLAUDE_CODE_SESSION_ID，从 state 缓存读取
-        session_id = state.get("_cached_session_id", "")
+        # Stop hook stdin 包含 session_id 和 transcript_path
+        hook_input = read_hook_stdin()
+        session_id = hook_input.get("session_id", "") if hook_input else ""
+        transcript_path = hook_input.get("transcript_path", "") if hook_input else ""
         flag_path = get_flag_path()
         flag_path.write_text(
             json.dumps({
                 "timestamp": str(Path.cwd()),
                 "session_id": session_id,
+                "transcript_path": transcript_path,
                 "triggers": {
                     k: v for k, v in results.items() if v["reached"]
                 }
@@ -208,23 +216,26 @@ def cmd_get_pending():
 
 
 def cmd_get_transcript():
-    """读取 flag 文件中的 session_id，找到 transcript 文件路径"""
+    """读取 flag 文件中的 transcript_path，直接返回"""
     flag_path = get_flag_path()
     if not flag_path.exists():
         print(json.dumps({"found": False, "path": ""}))
         return
     try:
         flag_data = json.loads(flag_path.read_text())
-        session_id = flag_data.get("session_id", "")
-        if not session_id:
-            print(json.dumps({"found": False, "path": "", "error": "no session_id in flag"}))
+        transcript_path = flag_data.get("transcript_path", "")
+        if transcript_path and Path(transcript_path).exists():
+            print(json.dumps({"found": True, "path": transcript_path}))
             return
-        pattern = str(Path.home() / ".claude" / "projects" / "*" / f"{session_id}.jsonl")
-        matches = glob_mod.glob(pattern)
-        if matches:
-            print(json.dumps({"found": True, "path": matches[0]}))
-        else:
-            print(json.dumps({"found": False, "path": "", "error": f"no transcript for {session_id}"}))
+        # 旧版 flag 只有 session_id，回退到 glob 搜索
+        session_id = flag_data.get("session_id", "")
+        if session_id:
+            pattern = str(Path.home() / ".claude" / "projects" / "*" / f"{session_id}.jsonl")
+            matches = glob_mod.glob(pattern)
+            if matches:
+                print(json.dumps({"found": True, "path": matches[0]}))
+                return
+        print(json.dumps({"found": False, "path": "", "error": "no transcript_path in flag and transcript not found"}))
     except (json.JSONDecodeError, IOError) as e:
         print(json.dumps({"found": False, "path": "", "error": str(e)}))
 
