@@ -58,7 +58,7 @@ CLAUDE.md stores project facts and user experience. Identify candidates when:
 | Correct experience | A practice was validated as effective | "Shadow tables for large data migration reduced lock time from minutes to milliseconds" |
 
 **Evolution actions:**
-- Add or update a paragraph in `.claude/CLAUDE.md`, never overwrite unrelated existing content
+- Add or update a paragraph in `CLAUDE.md` (project root), never overwrite unrelated existing content
 - Use structured sections like `## Experience` or `## Preferences`
 - Patch mode (incremental update), never full rewrite
 

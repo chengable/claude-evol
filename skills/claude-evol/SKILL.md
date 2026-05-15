@@ -19,7 +19,7 @@ claude-evol 将 Hermes 自主进化能力移植到 Claude Code。它通过 Hook 
 ## 元数据
 
 - **调用方**：用户 `/claude-evol` 命令或 SessionStart hook 通知
-- **被调用对象**：`agents/claude-evol-reviewer.md`、`scripts/state-manager.py`、`skills/`、`.claude/CLAUDE.md`、`.claude/rule/`
+- **被调用对象**：`agents/claude-evol-reviewer.md`、`scripts/state-manager.py`、`skills/`、`CLAUDE.md`、`.claude/rule/`
 - **输入**：当前会话对话路径或手动输入的审查范围
 - **输出**：更新后的 skills/、CLAUDE.md 或 .claude/rule/ 文件
 - **在主流程中的位置**：主编排节点，连接 hook 检测和审查 Agent
@@ -86,7 +86,7 @@ Output: 结构化 JSON 建议列表
 用户确认后，按建议写入对应文件：
 
 - **Skill 建议**：写入 `.claude/skills/<skill-name>/SKILL.md`，新建或 patch 已有技能
-- **CLAUDE.md 建议**：增量更新 `.claude/CLAUDE.md`，使用 patch 模式，不覆盖无关内容
+- **CLAUDE.md 建议**：增量更新 `CLAUDE.md`（项目根目录），使用 patch 模式，不覆盖无关内容
 - **Rule 建议**：写入 `.claude/rule/<constraint-name>.md`，每个约束独立文件
 
 ### 7. 重置状态
