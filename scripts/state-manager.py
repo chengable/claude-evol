@@ -175,11 +175,29 @@ def cmd_get_pending():
     if flag_path.exists():
         try:
             content = flag_path.read_text()
-            print(json.dumps({"pending": True, "detail": json.loads(content)}))
+            detail = json.loads(content)
+            triggers = detail.get("triggers", {})
+            trigger_info = ", ".join(
+                f"{k}: {v.get('current', '?')}/{v.get('threshold', '?')}"
+                for k, v in triggers.items()
+            )
+            # ANSI 彩色输出，SessionStart 时不会被其他噪音淹没
+            bold = "\033[1m"
+            red = "\033[91m"
+            yellow = "\033[93m"
+            reset = "\033[0m"
+            print(f"{bold}{red}╔══════════════════════════════════════╗{reset}")
+            print(f"{bold}{red}║  🧬 claude-evol: 进化建议待审查        ║{reset}")
+            print(f"{bold}{red}║  触发: {trigger_info:<30}║{reset}")
+            print(f"{bold}{red}║  输入 {yellow}/claude-evol{red} 开始进化审查         ║{reset}")
+            print(f"{bold}{red}╚══════════════════════════════════════╝{reset}")
+            # 同时输出机器可读 JSON 到 stderr 供日志
+            print(json.dumps({"pending": True, "detail": detail}), file=sys.stderr)
         except (json.JSONDecodeError, IOError):
             print(json.dumps({"pending": True, "detail": {}}))
     else:
-        print(json.dumps({"pending": False, "detail": {}}))
+        # 无待审查时静默，不污染 SessionStart 输出
+        pass
 
 
 def cmd_get_transcript():
