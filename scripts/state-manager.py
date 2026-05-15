@@ -88,6 +88,11 @@ def save_state(state: dict):
 def cmd_increment(counter_name: str):
     state = load_state()
     state["counters"][counter_name] = state["counters"].get(counter_name, 0) + 1
+    # PostToolUse 在活跃会话中运行，能拿到 CLAUDE_CODE_SESSION_ID
+    # 缓存下来供 Stop hook 使用（Stop hook 子进程拿不到此环境变量）
+    sid = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+    if sid:
+        state["_cached_session_id"] = sid
     save_state(state)
     print(state["counters"][counter_name])
 
@@ -114,6 +119,7 @@ def cmd_reset_all():
     state = load_state()
     state["counters"] = {}
     state["pending_review"] = False
+    state.pop("_cached_session_id", None)
     save_state(state)
     # 同时删除标记文件
     flag_path = get_flag_path()
@@ -154,7 +160,8 @@ def cmd_check_all(set_flag: bool = False):
     if set_flag and any_reached:
         state["pending_review"] = True
         save_state(state)
-        session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+        # Stop hook 子进程拿不到 CLAUDE_CODE_SESSION_ID，从 state 缓存读取
+        session_id = state.get("_cached_session_id", "")
         flag_path = get_flag_path()
         flag_path.write_text(
             json.dumps({
