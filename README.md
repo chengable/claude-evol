@@ -25,7 +25,7 @@ claude-evol/
 ├── agents/
 │   └── claude-evol-reviewer.md        # 审查 Agent（三类进化判断）
 ├── hooks/
-│   └── hooks.json                     # PostToolUse/Stop/SessionStart Hook
+│   └── hooks.json                     # PostToolUse/Stop Hook
 ├── scripts/
 │   ├── state-manager.py               # 状态管理器（纯标准库）
 │   └── requirements.txt               # Python >= 3.8
@@ -76,11 +76,9 @@ claude-evol/
 ```
 PostToolUse Hook → increment（每次工具调用 +1）
        ↓
-Stop Hook → check-all --set-flag（达标写入标记）
+Stop Hook → check-all --set-flag（达标写入标记 + 终端提醒）
        ↓
-SessionStart Hook → get-pending（检测标记，通知用户）
-       ↓
-用户看到通知 → /claude-evol 或忽略
+用户看到提醒 → /claude-evol 或忽略
 ```
 
 默认阈值：Skill 15 次工具调用，Memory 15 次（与 Hermes 一致）。
@@ -114,8 +112,7 @@ skills/claude-evol/SKILL.md（主编排）
 
 hooks/hooks.json
   ├── PostToolUse → state-manager.py increment
-  ├── Stop        → state-manager.py check-all --set-flag
-  └── SessionStart → state-manager.py get-pending
+  └── Stop        → state-manager.py check-all --set-flag（达标写入标记 + 终端提醒）
 ```
 
 ## 调试

@@ -25,7 +25,7 @@ claude-evol/
 ├── agents/
 │   └── claude-evol-reviewer.md        # Review agent (three-category classifier)
 ├── hooks/
-│   └── hooks.json                     # PostToolUse/Stop/SessionStart hooks
+│   └── hooks.json                     # PostToolUse/Stop hooks
 ├── scripts/
 │   ├── state-manager.py               # State manager (stdlib only)
 │   └── requirements.txt               # Python >= 3.8
@@ -76,11 +76,9 @@ No manual action needed. Hooks work in the background:
 ```
 PostToolUse Hook → increment (every tool call +1)
        ↓
-Stop Hook → check-all --set-flag (write flag file when threshold reached)
+Stop Hook → check-all --set-flag (write flag + terminal reminder)
        ↓
-SessionStart Hook → get-pending (check for flag, notify user)
-       ↓
-User sees notification → /claude-evol or ignore
+User sees reminder → /claude-evol or ignore
 ```
 
 Default thresholds: Skill 15 tool iterations, Memory 15 tool iterations (matches Hermes).
@@ -114,8 +112,7 @@ skills/claude-evol/SKILL.md (orchestrator)
 
 hooks/hooks.json
   ├── PostToolUse → state-manager.py increment
-  ├── Stop        → state-manager.py check-all --set-flag
-  └── SessionStart → state-manager.py get-pending
+  └── Stop        → state-manager.py check-all --set-flag (write flag + terminal reminder)
 ```
 
 ## Debugging
