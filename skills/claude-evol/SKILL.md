@@ -103,7 +103,7 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-state
 Hook 在后台持续工作，不需要手动调用：
 
 ```
-PostToolUse Hook ─→ increment _iters_since_skill
+PostToolUse Hook ─→ increment _iters_since_review
      ↓
 Stop Hook ─→ check-all --set-flag（达标写入标记文件）
      ↓
@@ -122,11 +122,10 @@ SessionStart Hook ─→ get-pending（检测标记，通知用户）
 {
   "version": "1.0.0",
   "counters": {
-    "_iters_since_skill": 15
+    "_iters_since_review": 15
   },
   "thresholds": {
-    "_iters_since_skill": 20,
-    "_iters_since_memory": 30
+    "_iters_since_review": 10
   },
   "pending_review": false,
   "auto_mode": false
@@ -154,5 +153,5 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py reset-all
 检查特定计数器是否达标：
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_skill 20
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_review 10
 ```

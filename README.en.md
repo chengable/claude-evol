@@ -151,10 +151,10 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-state
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py reset-all
 
 # Check specific counter
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get _iters_since_skill
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get _iters_since_review
 
 # Check threshold
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_skill 10
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_review 10
 ```
 
 ## Risks & Mitigations

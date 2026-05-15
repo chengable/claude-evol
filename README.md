@@ -151,10 +151,10 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-state
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py reset-all
 
 # 检查特定计数器
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get _iters_since_skill
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get _iters_since_review
 
 # 检查阈值
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_skill 10
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_review 10
 ```
 
 ## 风险与缓解
