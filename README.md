@@ -35,7 +35,7 @@ claude-evol/
 ### 添加插件市场
 
 ```bash
-/plugin marketplace add claude-evol https://github.com/chengable/claude-evol
+/plugin marketplace add chengable/claude-evol
 ```
 
 ### 安装插件
