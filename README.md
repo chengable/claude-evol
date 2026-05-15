@@ -123,13 +123,21 @@ hooks/hooks.json
 ```json
 {
   "name": "claude-evol",
-  "repository": "https://github.com/chengable/claude-evol.git",
-  "category": "productivity",
-  "keywords": ["evolution", "self-improvement", "skill", "memory", "hermes"]
+  "owner": {
+    "name": "chengable"
+  },
+  "plugins": [
+    {
+      "name": "claude-evol",
+      "version": "1.0.0",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
 }
 ```
 
-发布新版本时更新 `version` 字段即可。
+发布新版本时更新 `plugins[0].version` 字段即可。
 
 ## 调试
 
