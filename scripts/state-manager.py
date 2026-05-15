@@ -22,8 +22,8 @@ from pathlib import Path
 # ---------- 配置 ----------
 
 DEFAULT_THRESHOLDS = {
-    "_iters_since_skill": 20,
-    "_iters_since_memory": 30,
+    "_iters_since_skill": 10,
+    "_iters_since_memory": 10,
 }
 
 DEFAULT_STATE = {

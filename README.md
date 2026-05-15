@@ -1,5 +1,7 @@
 # claude-evol — Claude Code 自主进化插件
 
+[English](README.en.md)
+
 将 Hermes 自主进化能力移植到 Claude Code。自动检测对话中的重复模式、错误经验和领域知识，生成三类进化建议（Skill/CLAUDE.md/Rule），让 Claude Code 越用越聪明。
 
 ## 功能
@@ -81,7 +83,7 @@ SessionStart Hook → get-pending（检测标记，通知用户）
 用户看到通知 → /claude-evol 或忽略
 ```
 
-默认阈值：Skill 20 次工具调用，Memory 30 次。
+默认阈值：Skill 10 次工具调用，Memory 10 次（与 Hermes 一致）。
 
 ## 三类进化判断逻辑
 
@@ -152,7 +154,7 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py reset-all
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get _iters_since_skill
 
 # 检查阈值
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_skill 20
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_skill 10
 ```
 
 ## 风险与缓解
