@@ -1,0 +1,11 @@
+{
+  "name": "claude-evol",
+  "version": "1.0.0",
+  "description": "将 Hermes 自主进化能力移植到 Claude Code——自动检测对话模式，进化 Skill/CLAUDE.md/Rule，让 Claude Code 越用越聪明",
+  "author": {
+    "name": "claude-evol"
+  },
+  "license": "MIT",
+  "keywords": ["evolution", "self-improvement", "skill", "memory", "hermes"],
+  "hooks": "./hooks/hooks.json"
+}
