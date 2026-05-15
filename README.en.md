@@ -118,29 +118,6 @@ hooks/hooks.json
   └── SessionStart → state-manager.py get-pending
 ```
 
-## Marketplace
-
-`marketplace.json` is located in `.claude-plugin/` for automatic discovery by the Claude Code plugin marketplace:
-
-```json
-{
-  "name": "claude-evol",
-  "owner": {
-    "name": "chengable"
-  },
-  "plugins": [
-    {
-      "name": "claude-evol",
-      "version": "1.0.0",
-      "source": "./",
-      "category": "productivity"
-    }
-  ]
-}
-```
-
-Update `plugins[0].version` when publishing a new version.
-
 ## Debugging
 
 ```bash
