@@ -10,12 +10,6 @@
 - **自动模式**：`/claude-evol auto` 切换自动写入，跳过用户确认
 - **安全保守**：默认用户确认模式 + 负面清单 + 增量更新
 
-## 最低版本要求
-
-- Claude Code >= 1.0.0（需支持插件系统和 `${CLAUDE_PLUGIN_ROOT}`）
-- Python >= 3.8
-- 操作系统：macOS / Linux / Windows（WSL）
-
 ## 目录结构
 
 ```
@@ -38,68 +32,19 @@ claude-evol/
 
 ## 安装
 
-### 方式一：插件市场安装（推荐）
+### 添加插件市场
+
+```bash
+/plugin marketplace add claude-evol https://github.com/chengable/claude-evol
+```
+
+### 安装插件
 
 ```bash
 /plugin install claude-evol
 ```
 
-插件自动下载并启用，Hook 立即生效。
-
-### 方式二：本地插件安装
-
-将整个 `claude-evol/` 目录复制到 Claude Code 插件目录：
-
-```bash
-cp -r claude-evol/ ~/.claude/plugins/claude-evol/
-```
-
-然后启用：
-
-```
-/plugin enable claude-evol
-```
-
-### 方式三：手动安装各组件
-
-如果不想用插件系统，也可以手动安装各组件：
-
-```bash
-PROJECT_ROOT=$(pwd)
-
-# Skill
-cp -r skills/claude-evol/ "$PROJECT_ROOT/.claude/skills/claude-evol/"
-
-# Agent
-cp agents/claude-evol-reviewer.md "$PROJECT_ROOT/.claude/agents/"
-
-# 脚本
-mkdir -p "$PROJECT_ROOT/.claude/scripts/evol/"
-cp scripts/state-manager.py "$PROJECT_ROOT/.claude/scripts/evol/"
-```
-
-然后将 `hooks/hooks.json` 内容合并到 `.claude/settings.json`（需将 `${CLAUDE_PLUGIN_ROOT}` 替换为实际脚本路径）。
-
-### 验证安装
-
-```bash
-# 插件模式
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-state
-
-# 手动模式
-python .claude/scripts/evol/state-manager.py get-state
-```
-
-预期输出：
-```json
-{
-  "version": "1.0.0",
-  "counters": {},
-  "thresholds": {},
-  "pending_review": false,
-  "auto_mode": false
-}
-```
+安装后 Hook 自动生效，无需额外配置。使用 `/claude-evol` 手动触发进化审查。
 
 ## 使用方式
 
@@ -215,16 +160,9 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_sin
 ## 卸载
 
 ```bash
-# 插件模式
 /plugin disable claude-evol
-rm -rf ~/.claude/plugins/claude-evol/
-
-# 手动模式
-rm -rf .claude/skills/claude-evol/
-rm .claude/agents/claude-evol-reviewer.md
-rm -rf .claude/scripts/evol/
-rm -f .claude/evol_state.json .claude/evol_review_pending.flag
-# 从 settings.json 中删除 claude-evol 相关 hook 条目
+/plugin uninstall claude-evol
+/plugin marketplace remove claude-evol
 ```
 
 ## 许可
