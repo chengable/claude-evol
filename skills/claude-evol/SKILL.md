@@ -12,13 +12,13 @@ claude-evol 将 Hermes 自主进化能力移植到 Claude Code。它通过 Hook 
 
 ## 触发方式
 
-- **自动通知**：SessionStart hook 检测到待审查标记时通知用户
+- **自动通知**：Stop hook 会话结束时检测达标并提醒用户
 - **手动触发**：`/claude-evol` — 立即执行进化审查
 - **自动模式**：`/claude-evol auto` — 切换自动写入模式（跳过用户确认）
 
 ## 元数据
 
-- **调用方**：用户 `/claude-evol` 命令或 SessionStart hook 通知
+- **调用方**：用户 `/claude-evol` 命令
 - **被调用对象**：`agents/claude-evol-reviewer.md`、`scripts/state-manager.py`、`skills/`、`CLAUDE.md`、`.claude/rule/`
 - **输入**：当前会话对话路径或手动输入的审查范围
 - **输出**：更新后的 skills/、CLAUDE.md 或 .claude/rule/ 文件
@@ -46,7 +46,7 @@ Stop hook 在写 flag 时记录了 `transcript_path`（来自 hook stdin），�
 
 ```bash
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-transcript
-# 返回：{"found": true, "path": "/Users/.../.claude/projects/.../session-id.jsonl"}
+# 返回：{"found": true, "transcripts": [{"session_id": "...", "path": "...jsonl", "count": 15}, ...]}
 ```
 
 如果 `found: false`（跨机器或文件被清理），则使用当前对话上下文作为审查素材。
@@ -114,15 +114,13 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-state
 Hook 在后台持续工作，不需要手动调用：
 
 ```
-PostToolUse Hook ─→ increment _iters_since_review
+PostToolUse Hook ─→ increment（按 session_id 独立计数）
      ↓
-Stop Hook ─→ check-all --set-flag（达标写入标记文件，记录 transcript_path）
+Stop Hook ─→ check-all --set-flag（达标 → 追加到队列 + 终端提醒）
      ↓
-SessionStart Hook ─→ get-pending（检测标记，通知用户）
+用户下次会话 → /claude-evol → get-transcript（获取队列中所有 transcript）
      ↓
-用户 /claude-evol → get-transcript（读取上次会话的 transcript JSONL）
-     ↓
-审查 Agent 分析 transcript → 生成建议 → 写入文件 → reset-all
+审查 Agent 逐个分析 transcript → 生成建议 → 写入文件 → reset-all
 ```
 
 ## 状态文件结构
@@ -133,19 +131,25 @@ SessionStart Hook ─→ get-pending（检测标记，通知用户）
 {
   "version": "1.0.0",
   "counters": {
-    "_iters_since_review": 15
+    "session:abc-123": 15,
+    "session:def-456": 12
   },
-  "thresholds": {
-    "_iters_since_review": 10
-  },
-  "pending_review": false,
+  "thresholds": {},
+  "pending_review": true,
   "auto_mode": false
 }
 ```
 
 ## 标记文件
 
-`.claude/evol_review_pending.flag` 存在即表示有待审查标记，SessionStart hook 检测此文件后通知用户。
+`.claude/evol_review_pending.flag` 为 JSON 队列，每个达标 session 追加一条记录：
+
+```json
+[
+  {"session_id": "abc-123", "transcript_path": "/path/to/abc-123.jsonl", "count": 15},
+  {"session_id": "def-456", "transcript_path": "/path/to/def-456.jsonl", "count": 12}
+]
+```
 
 ## 调试
 

@@ -96,11 +96,13 @@ def read_hook_stdin() -> dict | None:
         return None
 
 
-def cmd_increment(counter_name: str):
+def cmd_increment(counter_name: str = None):
+    hook_input = read_hook_stdin()
+    session_id = hook_input.get("session_id", "unknown") if hook_input else "unknown"
     state = load_state()
-    state["counters"][counter_name] = state["counters"].get(counter_name, 0) + 1
+    key = f"session:{session_id}"
+    state["counters"][key] = state["counters"].get(key, 0) + 1
     save_state(state)
-    print(state["counters"][counter_name])
 
 
 def cmd_get(counter_name: str):
@@ -126,7 +128,7 @@ def cmd_reset_all():
     state["counters"] = {}
     state["pending_review"] = False
     save_state(state)
-    # 同时删除标记文件
+    # 删除标记文件
     flag_path = get_flag_path()
     if flag_path.exists():
         flag_path.unlink()
@@ -134,11 +136,14 @@ def cmd_reset_all():
 
 
 def cmd_check_threshold(counter_name: str, threshold: int):
+    hook_input = read_hook_stdin()
+    session_id = hook_input.get("session_id", "unknown") if hook_input else "unknown"
     state = load_state()
-    current = state["counters"].get(counter_name, 0)
+    key = f"session:{session_id}"
+    current = state["counters"].get(key, 0)
     result = current >= threshold
     print(json.dumps({
-        "counter": counter_name,
+        "session_id": session_id,
         "current": current,
         "threshold": threshold,
         "reached": result,
@@ -147,97 +152,113 @@ def cmd_check_threshold(counter_name: str, threshold: int):
 
 def cmd_check_all(set_flag: bool = False):
     state = load_state()
-    thresholds = {**DEFAULT_THRESHOLDS, **state.get("thresholds", {})}
-    results = {}
-    any_reached = False
+    hook_input = read_hook_stdin()
+    session_id = hook_input.get("session_id", "") if hook_input else ""
+    transcript_path = hook_input.get("transcript_path", "") if hook_input else ""
 
-    for counter_name, threshold in thresholds.items():
-        current = state["counters"].get(counter_name, 0)
-        reached = current >= threshold
-        results[counter_name] = {
-            "current": current,
-            "threshold": threshold,
-            "reached": reached,
-        }
-        if reached:
-            any_reached = True
+    key = f"session:{session_id}"
+    current = state["counters"].get(key, 0)
+    threshold = DEFAULT_THRESHOLDS.get("_iters_since_review", 10)
+    reached = current >= threshold
 
-    if set_flag and any_reached:
-        state["pending_review"] = True
-        save_state(state)
-        # Stop hook stdin 包含 session_id 和 transcript_path
-        hook_input = read_hook_stdin()
-        session_id = hook_input.get("session_id", "") if hook_input else ""
-        transcript_path = hook_input.get("transcript_path", "") if hook_input else ""
+    if set_flag and reached:
         flag_path = get_flag_path()
-        flag_path.write_text(
-            json.dumps({
-                "timestamp": str(Path.cwd()),
+        # 读取已有队列，追加而非覆盖
+        queue = []
+        if flag_path.exists():
+            try:
+                queue = json.loads(flag_path.read_text())
+                if not isinstance(queue, list):
+                    queue = []
+            except (json.JSONDecodeError, IOError):
+                queue = []
+
+        # 检查是否已在队列中（防重复）
+        already_queued = any(e.get("session_id") == session_id for e in queue)
+        if not already_queued:
+            queue.append({
                 "session_id": session_id,
                 "transcript_path": transcript_path,
-                "triggers": {
-                    k: v for k, v in results.items() if v["reached"]
-                }
-            }, indent=2)
-        )
-        print(json.dumps({"flag_set": True, "triggers": results}))
+                "count": current,
+            })
+            flag_path.write_text(json.dumps(queue, indent=2, ensure_ascii=False))
+
+        # 清理低于阈值的 session 计数（这些 session 不会再被审查）
+        below_threshold = [k for k, v in state["counters"].items()
+                           if k.startswith("session:") and v < threshold and k != key]
+        for k in below_threshold:
+            del state["counters"][k]
+        state["pending_review"] = True
+        save_state(state)
+
+        # Stop hook 中直接提醒用户
+        total_pending = len(queue)
+        bold = "\033[1m"
+        yellow = "\033[93m"
+        reset = "\033[0m"
+        print(f"{bold}{yellow}🧬 claude-evol: 当前会话 {current} 次工具调用，已达审查阈值{reset}", file=sys.stderr)
+        print(f"{bold}{yellow}   待审查会话: {total_pending} 个 | 下次会话运行 /claude-evol 开始进化{reset}", file=sys.stderr)
+
+        print(json.dumps({"flag_set": True, "session_count": current, "pending_total": total_pending}))
+    elif set_flag and not reached:
+        # 未达标，清理该 session 计数（不会再被审查）
+        if key in state["counters"]:
+            del state["counters"][key]
+            save_state(state)
+        print(json.dumps({"flag_set": False, "session_count": current}))
     else:
-        print(json.dumps({"flag_set": False, "triggers": results}))
+        print(json.dumps({"flag_set": False, "session_count": current}))
 
 
 def cmd_get_pending():
     flag_path = get_flag_path()
-    if flag_path.exists():
-        try:
-            content = flag_path.read_text()
-            detail = json.loads(content)
-            triggers = detail.get("triggers", {})
-            trigger_info = ", ".join(
-                f"{k}: {v.get('current', '?')}/{v.get('threshold', '?')}"
-                for k, v in triggers.items()
-            )
-            # ANSI 彩色输出，SessionStart 时不会被其他噪音淹没
-            bold = "\033[1m"
-            red = "\033[91m"
-            yellow = "\033[93m"
-            reset = "\033[0m"
-            print(f"{bold}{red}╔══════════════════════════════════════╗{reset}")
-            print(f"{bold}{red}║  🧬 claude-evol: 进化建议待审查        ║{reset}")
-            print(f"{bold}{red}║  触发: {trigger_info:<30}║{reset}")
-            print(f"{bold}{red}║  输入 {yellow}/claude-evol{red} 开始进化审查         ║{reset}")
-            print(f"{bold}{red}╚══════════════════════════════════════╝{reset}")
-            # 同时输出机器可读 JSON 到 stderr 供日志
-            print(json.dumps({"pending": True, "detail": detail}), file=sys.stderr)
-        except (json.JSONDecodeError, IOError):
-            print(json.dumps({"pending": True, "detail": {}}))
-    else:
-        # 无待审查时静默，不污染 SessionStart 输出
+    if not flag_path.exists():
+        return
+    try:
+        queue = json.loads(flag_path.read_text())
+        if not isinstance(queue, list) or not queue:
+            return
+        # 显示待审查摘要
+        bold = "\033[1m"
+        red = "\033[91m"
+        yellow = "\033[93m"
+        reset = "\033[0m"
+        total = len(queue)
+        total_calls = sum(e.get("count", 0) for e in queue)
+        print(f"{bold}{red}╔══════════════════════════════════════╗{reset}")
+        print(f"{bold}{red}║  🧬 claude-evol: {total} 个待审查会话 ({total_calls} 次调用)    ║{reset}")
+        for i, entry in enumerate(queue):
+            sid = entry.get("session_id", "?")[:8]
+            count = entry.get("count", "?")
+            print(f"{bold}{red}║  [{i+1}] {sid}... — {count} 次调用{'':<20}║{reset}")
+        print(f"{bold}{red}║  输入 {yellow}/claude-evol{red} 开始进化审查         ║{reset}")
+        print(f"{bold}{red}╚══════════════════════════════════════╝{reset}")
+        print(json.dumps({"pending": True, "queue": queue}), file=sys.stderr)
+    except (json.JSONDecodeError, IOError):
         pass
 
 
 def cmd_get_transcript():
-    """读取 flag 文件中的 transcript_path，直接返回"""
+    """读取 flag 队列，返回所有待审查 transcript"""
     flag_path = get_flag_path()
     if not flag_path.exists():
-        print(json.dumps({"found": False, "path": ""}))
+        print(json.dumps({"found": False, "transcripts": []}))
         return
     try:
-        flag_data = json.loads(flag_path.read_text())
-        transcript_path = flag_data.get("transcript_path", "")
-        if transcript_path and Path(transcript_path).exists():
-            print(json.dumps({"found": True, "path": transcript_path}))
+        queue = json.loads(flag_path.read_text())
+        if not isinstance(queue, list):
+            print(json.dumps({"found": False, "transcripts": []}))
             return
-        # 旧版 flag 只有 session_id，回退到 glob 搜索
-        session_id = flag_data.get("session_id", "")
-        if session_id:
-            pattern = str(Path.home() / ".claude" / "projects" / "*" / f"{session_id}.jsonl")
-            matches = glob_mod.glob(pattern)
-            if matches:
-                print(json.dumps({"found": True, "path": matches[0]}))
-                return
-        print(json.dumps({"found": False, "path": "", "error": "no transcript_path in flag and transcript not found"}))
+        transcripts = []
+        for entry in queue:
+            tp = entry.get("transcript_path", "")
+            if tp and Path(tp).exists():
+                transcripts.append({"session_id": entry.get("session_id", ""),
+                                     "path": tp, "count": entry.get("count", 0)})
+        print(json.dumps({"found": len(transcripts) > 0, "transcripts": transcripts},
+                         ensure_ascii=False))
     except (json.JSONDecodeError, IOError) as e:
-        print(json.dumps({"found": False, "path": "", "error": str(e)}))
+        print(json.dumps({"found": False, "transcripts": [], "error": str(e)}))
 
 
 # ---------- CLI ----------
@@ -248,9 +269,9 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # increment <counter_name>
+    # increment [counter_name]  (counter_name 可选，session_id 从 stdin 读取)
     p = subparsers.add_parser("increment")
-    p.add_argument("counter_name")
+    p.add_argument("counter_name", nargs="?")
 
     # get <counter_name>
     p = subparsers.add_parser("get")

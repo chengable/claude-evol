@@ -6,7 +6,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py increment _iters_since_review",
+          "command": "python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py increment",
           "timeout": 5
         }
       ]
@@ -19,18 +19,6 @@
         {
           "type": "command",
           "command": "python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-all --set-flag",
-          "timeout": 5
-        }
-      ]
-    }
-  ],
-  "SessionStart": [
-    {
-      "matcher": "*",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-pending",
           "timeout": 5
         }
       ]
