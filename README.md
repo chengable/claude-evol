@@ -15,8 +15,8 @@
 ```
 claude-evol/
 ├── .claude-plugin/
-│   └── plugin.json                    # 插件清单
-├── marketplace.json                   # 插件市场元数据
+│   ├── plugin.json                    # 插件清单
+│   └── marketplace.json               # 插件市场元数据
 ├── skills/
 │   └── claude-evol/
 │       └── SKILL.md                   # 主编排 Skill（/claude-evol 命令）
@@ -118,7 +118,7 @@ hooks/hooks.json
 
 ## 发布与市场
 
-`marketplace.json` 位于仓库根目录，供 Claude Code 插件市场自动发现：
+`marketplace.json` 位于 `.claude-plugin/` 目录，供 Claude Code 插件市场自动发现：
 
 ```json
 {
