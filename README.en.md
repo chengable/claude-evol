@@ -153,8 +153,8 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py reset-all
 # Check specific counter
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get _iters_since_review
 
-# Check threshold
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_review 10
+# Check transcript path for pending review
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-transcript
 ```
 
 ## Risks & Mitigations

@@ -40,27 +40,38 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-state
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-pending
 ```
 
-### 2. 启动审查 Agent
+### 2. 获取会话 Transcript
 
-使用 Fork 模式启动审查 Agent（继承当前上下文），传入对话记录：
+Stop hook 在写 flag 时记录了 `CLAUDE_CODE_SESSION_ID`，通过 `get-transcript` 查找对应的 session 文件：
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-transcript
+# 返回：{"found": true, "path": "/Users/.../.claude/projects/.../session-id.jsonl"}
+```
+
+如果 `found: false`（跨机器或文件被清理），则使用当前对话上下文作为审查素材。
+
+### 3. 启动审查 Agent
+
+使用 Fork 模式启动审查 Agent，传入 transcript 文件或当前对话上下文：
 
 ```
 Fork agent: claude-evol-reviewer
-Input: 当前会话 transcript 路径或摘要
+Input: 上一步获取的 transcript JSONL 文件路径，或当前对话摘要
 Task: 分析对话，执行三类进化判断（Skill/CLAUDE.md/Rule）
 Output: 结构化 JSON 建议列表
 ```
 
 审查 Agent 配置在 `agents/claude-evol-reviewer.md`，使用 haiku 模型（审查任务不需要最强模型）。
 
-### 3. 展示审查结果
+### 4. 展示审查结果
 
 将审查 Agent 返回的 JSON 解析后展示给用户，按三类分组：
 - Skill 建议（新建/更新技能）
 - CLAUDE.md 建议（增量更新项目记忆）
 - Rule 建议（新建/更新强制性规则）
 
-### 4. 用户确认（默认模式）
+### 5. 用户确认（默认模式）
 
 展示每类建议的数量和摘要。非 auto 模式下，逐类询问用户确认：
 
@@ -70,7 +81,7 @@ Output: 结构化 JSON 建议列表
 是否应用 CLAUDE.md 更新？[y/n]
 ```
 
-### 5. 写入文件
+### 6. 写入文件
 
 用户确认后，按建议写入对应文件：
 
@@ -78,7 +89,7 @@ Output: 结构化 JSON 建议列表
 - **CLAUDE.md 建议**：增量更新 `.claude/CLAUDE.md`，使用 patch 模式，不覆盖无关内容
 - **Rule 建议**：写入 `.claude/rule/<constraint-name>.md`，每个约束独立文件
 
-### 6. 重置状态
+### 7. 重置状态
 
 写入完成后重置计数器：
 
@@ -105,13 +116,13 @@ Hook 在后台持续工作，不需要手动调用：
 ```
 PostToolUse Hook ─→ increment _iters_since_review
      ↓
-Stop Hook ─→ check-all --set-flag（达标写入标记文件）
+Stop Hook ─→ check-all --set-flag（达标写入标记文件 + 记录 session_id）
      ↓
 SessionStart Hook ─→ get-pending（检测标记，通知用户）
      ↓
-用户看到通知 → /claude-evol 手动触发或忽略
+用户 /claude-evol → get-transcript（读取上次会话的 transcript JSONL）
      ↓
-审查完成 → reset-all
+审查 Agent 分析 transcript → 生成建议 → 写入文件 → reset-all
 ```
 
 ## 状态文件结构

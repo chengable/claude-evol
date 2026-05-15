@@ -16,6 +16,7 @@ claude-evol state-manager.py — 纯标准库状态管理器
 import json
 import os
 import sys
+import glob as glob_mod
 import argparse
 from pathlib import Path
 
@@ -153,10 +154,12 @@ def cmd_check_all(set_flag: bool = False):
     if set_flag and any_reached:
         state["pending_review"] = True
         save_state(state)
+        session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
         flag_path = get_flag_path()
         flag_path.write_text(
             json.dumps({
                 "timestamp": str(Path.cwd()),
+                "session_id": session_id,
                 "triggers": {
                     k: v for k, v in results.items() if v["reached"]
                 }
@@ -177,6 +180,28 @@ def cmd_get_pending():
             print(json.dumps({"pending": True, "detail": {}}))
     else:
         print(json.dumps({"pending": False, "detail": {}}))
+
+
+def cmd_get_transcript():
+    """读取 flag 文件中的 session_id，找到 transcript 文件路径"""
+    flag_path = get_flag_path()
+    if not flag_path.exists():
+        print(json.dumps({"found": False, "path": ""}))
+        return
+    try:
+        flag_data = json.loads(flag_path.read_text())
+        session_id = flag_data.get("session_id", "")
+        if not session_id:
+            print(json.dumps({"found": False, "path": "", "error": "no session_id in flag"}))
+            return
+        pattern = str(Path.home() / ".claude" / "projects" / "*" / f"{session_id}.jsonl")
+        matches = glob_mod.glob(pattern)
+        if matches:
+            print(json.dumps({"found": True, "path": matches[0]}))
+        else:
+            print(json.dumps({"found": False, "path": "", "error": f"no transcript for {session_id}"}))
+    except (json.JSONDecodeError, IOError) as e:
+        print(json.dumps({"found": False, "path": "", "error": str(e)}))
 
 
 # ---------- CLI ----------
@@ -217,6 +242,9 @@ def main():
     # get-pending
     subparsers.add_parser("get-pending")
 
+    # get-transcript
+    subparsers.add_parser("get-transcript")
+
     args = parser.parse_args()
 
     if args.command == "increment":
@@ -235,6 +263,8 @@ def main():
         cmd_check_all(set_flag=args.set_flag)
     elif args.command == "get-pending":
         cmd_get_pending()
+    elif args.command == "get-transcript":
+        cmd_get_transcript()
 
 
 if __name__ == "__main__":

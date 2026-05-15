@@ -153,8 +153,8 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py reset-all
 # 检查特定计数器
 python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get _iters_since_review
 
-# 检查阈值
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_review 10
+# 查看待审查的 session transcript 路径
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-transcript
 ```
 
 ## 风险与缓解
