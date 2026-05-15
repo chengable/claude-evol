@@ -83,7 +83,7 @@ SessionStart Hook → get-pending (check for flag, notify user)
 User sees notification → /claude-evol or ignore
 ```
 
-Default thresholds: Skill 10 tool iterations, Memory 10 tool iterations (matches Hermes).
+Default thresholds: Skill 15 tool iterations, Memory 15 tool iterations (matches Hermes).
 
 ## Three-Category Evolution Logic
 

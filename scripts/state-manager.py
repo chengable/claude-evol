@@ -3,14 +3,14 @@
 claude-evol state-manager.py — 纯标准库状态管理器
 
 - 调用方：hooks (PostToolUse/Stop/SessionStart) 和 skills/claude-evol/SKILL.md
-- 被调用对象：.claude/evol_state.json, .claude/evol_review_pending.flag
+- 被调用对象：.claude/.claude-evol/evol_state.json, .claude/.claude-evol/evol_review_pending.flag
 - 输入：子命令 + 参数（通过 CLI args）
 - 输出：stdout JSON 或纯文本值
 - 在主流程中的位置：状态读写层，被 hook 和 skill 共同依赖
 
 安装位置：.claude/scripts/evol/state-manager.py
-状态文件：.claude/evol_state.json
-标记文件：.claude/evol_review_pending.flag
+状态文件：.claude/.claude-evol/evol_state.json
+标记文件：.claude/.claude-evol/evol_review_pending.flag
 """
 
 import json
@@ -23,7 +23,7 @@ from pathlib import Path
 # ---------- 配置 ----------
 
 DEFAULT_THRESHOLDS = {
-    "_iters_since_review": 10,
+    "_iters_since_review": 15,
 }
 
 DEFAULT_STATE = {
@@ -52,11 +52,11 @@ def find_project_root() -> Path:
 
 
 def get_state_path() -> Path:
-    return find_project_root() / ".claude" / "evol_state.json"
+    return find_project_root() / ".claude" / ".claude-evol" / "evol_state.json"
 
 
 def get_flag_path() -> Path:
-    return find_project_root() / ".claude" / "evol_review_pending.flag"
+    return find_project_root() / ".claude" / ".claude-evol" / "evol_review_pending.flag"
 
 
 def load_state() -> dict:
@@ -123,6 +123,16 @@ def cmd_reset(counter_name: str):
     print(f"ok: {counter_name} reset to 0")
 
 
+def cmd_toggle_auto():
+    state = load_state()
+    current = state.get("auto_mode", False)
+    state["auto_mode"] = not current
+    save_state(state)
+    new_val = state["auto_mode"]
+    status = "开启" if new_val else "关闭"
+    print(f"auto_mode → {status}")
+
+
 def cmd_reset_all():
     state = load_state()
     state["counters"] = {}
@@ -161,9 +171,8 @@ def cmd_check_all(set_flag: bool = False):
     threshold = DEFAULT_THRESHOLDS.get("_iters_since_review", 10)
     reached = current >= threshold
 
-    if set_flag and reached:
+    if set_flag:
         flag_path = get_flag_path()
-        # 读取已有队列，追加而非覆盖
         queue = []
         if flag_path.exists():
             try:
@@ -173,39 +182,48 @@ def cmd_check_all(set_flag: bool = False):
             except (json.JSONDecodeError, IOError):
                 queue = []
 
-        # 检查是否已在队列中（防重复）
-        already_queued = any(e.get("session_id") == session_id for e in queue)
-        if not already_queued:
-            queue.append({
-                "session_id": session_id,
-                "transcript_path": transcript_path,
-                "count": current,
-            })
+        if reached:
+            existing = next((e for e in queue if e.get("session_id") == session_id), None)
+            if existing:
+                existing["count"] = current
+                existing["transcript_path"] = transcript_path
+            else:
+                queue.append({
+                    "session_id": session_id,
+                    "transcript_path": transcript_path,
+                    "count": current,
+                })
+            flag_path.parent.mkdir(parents=True, exist_ok=True)
             flag_path.write_text(json.dumps(queue, indent=2, ensure_ascii=False))
 
-        # 清理低于阈值的 session 计数（这些 session 不会再被审查）
-        below_threshold = [k for k, v in state["counters"].items()
-                           if k.startswith("session:") and v < threshold and k != key]
-        for k in below_threshold:
-            del state["counters"][k]
-        state["pending_review"] = True
+        state["pending_review"] = len(queue) > 0
         save_state(state)
 
-        # Stop hook 中直接提醒用户
-        total_pending = len(queue)
-        bold = "\033[1m"
-        yellow = "\033[93m"
-        reset = "\033[0m"
-        print(f"{bold}{yellow}🧬 claude-evol: 当前会话 {current} 次工具调用，已达审查阈值{reset}", file=sys.stderr)
-        print(f"{bold}{yellow}   待审查会话: {total_pending} 个 | 下次会话运行 /claude-evol 开始进化{reset}", file=sys.stderr)
+        if queue:
+            total_pending = len(queue)
+            bold = "\033[1m"
+            yellow = "\033[93m"
+            reset = "\033[0m"
 
-        print(json.dumps({"flag_set": True, "session_count": current, "pending_total": total_pending}))
-    elif set_flag and not reached:
-        # 未达标，清理该 session 计数（不会再被审查）
-        if key in state["counters"]:
-            del state["counters"][key]
-            save_state(state)
-        print(json.dumps({"flag_set": False, "session_count": current}))
+            lines = [f"{bold}{yellow}🧬 claude-evol: 以下 {total_pending} 个会话已达审查阈值（≥{threshold} 次调用）：{reset}"]
+            for i, entry in enumerate(queue):
+                sid = entry.get("session_id", "?")[:8]
+                cnt = entry.get("count", "?")
+                lines.append(f"{bold}{yellow}  [{i+1}] {sid}... — {cnt} 次调用{reset}")
+            lines.append(f"{bold}{yellow}运行 /claude-evol 将审查以上全部会话并生成进化建议{reset}")
+
+            reminder = "\n".join(lines)
+
+            print(json.dumps({
+                "continue": True,
+                "suppressOutput": False,
+                "systemMessage": reminder,
+                "flag_set": reached,
+                "session_count": current,
+                "pending_total": total_pending,
+            }))
+        else:
+            print(json.dumps({"flag_set": False, "session_count": current, "pending_total": 0}))
     else:
         print(json.dumps({"flag_set": False, "session_count": current}))
 
@@ -233,7 +251,7 @@ def cmd_get_pending():
             print(f"{bold}{red}║  [{i+1}] {sid}... — {count} 次调用{'':<20}║{reset}")
         print(f"{bold}{red}║  输入 {yellow}/claude-evol{red} 开始进化审查         ║{reset}")
         print(f"{bold}{red}╚══════════════════════════════════════╝{reset}")
-        print(json.dumps({"pending": True, "queue": queue}), file=sys.stderr)
+        print(json.dumps({"pending": True, "queue": queue}))
     except (json.JSONDecodeError, IOError):
         pass
 
@@ -287,6 +305,9 @@ def main():
     # reset-all
     subparsers.add_parser("reset-all")
 
+    # toggle-auto
+    subparsers.add_parser("toggle-auto")
+
     # check-threshold <counter_name> <threshold>
     p = subparsers.add_parser("check-threshold")
     p.add_argument("counter_name")
@@ -314,6 +335,8 @@ def main():
         cmd_reset(args.counter_name)
     elif args.command == "reset-all":
         cmd_reset_all()
+    elif args.command == "toggle-auto":
+        cmd_toggle_auto()
     elif args.command == "check-threshold":
         cmd_check_threshold(args.counter_name, args.threshold)
     elif args.command == "check-all":

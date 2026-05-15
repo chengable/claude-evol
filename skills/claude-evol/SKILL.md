@@ -102,9 +102,8 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py reset-all
 `/claude-evol auto` 切换自动模式状态。自动模式下，审查 Agent 的建议直接写入文件，无需用户逐类确认。
 
 ```bash
-# 切换自动模式（在状态文件中标记）
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py get-state
-# 读取 auto_mode 值，取反后写入
+# 切换自动模式
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py toggle-auto
 ```
 
 自动模式适合在信任度高的项目中持续运行，但建议首次使用时保持手动模式以建立信任。
@@ -125,7 +124,7 @@ Stop Hook ─→ check-all --set-flag（达标 → 追加到队列 + 终端提�
 
 ## 状态文件结构
 
-`.claude/evol_state.json`：
+`.claude/.claude-evol/evol_state.json`：
 
 ```json
 {
@@ -142,7 +141,7 @@ Stop Hook ─→ check-all --set-flag（达标 → 追加到队列 + 终端提�
 
 ## 标记文件
 
-`.claude/evol_review_pending.flag` 为 JSON 队列，每个达标 session 追加一条记录：
+`.claude/.claude-evol/evol_review_pending.flag` 为 JSON 队列，每个达标 session 追加一条记录：
 
 ```json
 [
@@ -168,5 +167,11 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py reset-all
 检查特定计数器是否达标：
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_review 10
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_review 15
+```
+
+切换自动模式：
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py toggle-auto
 ```
