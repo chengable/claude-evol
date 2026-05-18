@@ -23,7 +23,7 @@ from pathlib import Path
 # ---------- 配置 ----------
 
 DEFAULT_THRESHOLDS = {
-    "_iters_since_review": 15,
+    "_iters_since_review": 20,
 }
 
 DEFAULT_STATE = {
@@ -168,7 +168,7 @@ def cmd_check_all(set_flag: bool = False):
 
     key = f"session:{session_id}"
     current = state["counters"].get(key, 0)
-    threshold = DEFAULT_THRESHOLDS.get("_iters_since_review", 10)
+    threshold = DEFAULT_THRESHOLDS.get("_iters_since_review", 20)
     reached = current >= threshold
 
     if set_flag:

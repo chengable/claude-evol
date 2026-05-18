@@ -115,6 +115,11 @@ Information found in conversation
 
 ## Output Format
 
+**CRITICAL — Anti-Hallucination Rules:**
+- `claude_md_suggestions[].target_file` is ALWAYS `"CLAUDE.md"` (project root, NOT `.claude/CLAUDE.md`)
+- Do NOT add a `file` field to any suggestion object — the `target_file` field is the only path field
+- The calling skill writes to these paths; your job is only to populate the structured JSON
+
 Output your analysis as structured JSON wrapped in markdown code fences:
 
 ```json
@@ -135,6 +140,7 @@ Output your analysis as structured JSON wrapped in markdown code fences:
       "section": "## Experience | ## Preferences | ## Architecture",
       "trigger_signal": "<which trigger from the table above>",
       "description": "<one-line summary>",
+      "target_file": "CLAUDE.md",
       "content": "<exact text to add or patch into CLAUDE.md>"
     }
   ],

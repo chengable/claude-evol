@@ -183,7 +183,7 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py reset-all
 检查特定计数器是否达标：
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_review 15
+python ${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.py check-threshold _iters_since_review 20
 ```
 
 切换自动模式：

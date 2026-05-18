@@ -82,7 +82,7 @@ Stop Hook → check-all --set-flag（达标写入标记 + 终端提醒）
 用户看到提醒 → /claude-evol 或忽略
 ```
 
-默认阈值：Skill 15 次工具调用，Memory 15 次（与 Hermes 一致）。
+默认阈值：Skill 20 次工具调用，Memory 20 次（与 Hermes 一致）。
 
 ## 三类进化判断逻辑
 

@@ -82,7 +82,7 @@ Stop Hook → check-all --set-flag (write flag + terminal reminder)
 User sees reminder → /claude-evol or ignore
 ```
 
-Default thresholds: Skill 15 tool iterations, Memory 15 tool iterations (matches Hermes).
+Default thresholds: Skill 20 tool iterations, Memory 20 tool iterations (matches Hermes).
 
 ## Three-Category Evolution Logic
 
