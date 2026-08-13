@@ -34,6 +34,9 @@ DEFAULT_STATE = {
     "auto_mode": False,
 }
 
+# 待审查会话列表的展示上限，超出部分折叠为 "..."
+MAX_DISPLAY_SESSIONS = 3
+
 
 def find_project_root() -> Path:
     """查找项目根目录（包含 .claude/ 的目录）"""
@@ -206,10 +209,12 @@ def cmd_check_all(set_flag: bool = False):
             reset = "\033[0m"
 
             lines = [f"{bold}{yellow}🧬 claude-evol: 以下 {total_pending} 个会话已达审查阈值（≥{threshold} 次调用）：{reset}"]
-            for i, entry in enumerate(queue):
+            for i, entry in enumerate(queue[:MAX_DISPLAY_SESSIONS]):
                 sid = entry.get("session_id", "?")[:8]
                 cnt = entry.get("count", "?")
                 lines.append(f"{bold}{yellow}  [{i+1}] {sid}... — {cnt} 次调用{reset}")
+            if len(queue) > MAX_DISPLAY_SESSIONS:
+                lines.append(f"{bold}{yellow}  ...（其余 {len(queue) - MAX_DISPLAY_SESSIONS} 个会话省略）{reset}")
             lines.append(f"{bold}{yellow}运行 /claude-evol 将审查以上全部会话并生成进化建议{reset}")
 
             reminder = "\n".join(lines)
@@ -245,10 +250,12 @@ def cmd_get_pending():
         total_calls = sum(e.get("count", 0) for e in queue)
         print(f"{bold}{red}╔══════════════════════════════════════╗{reset}")
         print(f"{bold}{red}║  🧬 claude-evol: {total} 个待审查会话 ({total_calls} 次调用)    ║{reset}")
-        for i, entry in enumerate(queue):
+        for i, entry in enumerate(queue[:MAX_DISPLAY_SESSIONS]):
             sid = entry.get("session_id", "?")[:8]
             count = entry.get("count", "?")
             print(f"{bold}{red}║  [{i+1}] {sid}... — {count} 次调用{'':<20}║{reset}")
+        if len(queue) > MAX_DISPLAY_SESSIONS:
+            print(f"{bold}{red}║  ...（其余 {len(queue) - MAX_DISPLAY_SESSIONS} 个会话省略）{'':<12}║{reset}")
         print(f"{bold}{red}║  输入 {yellow}/claude-evol{red} 开始进化审查         ║{reset}")
         print(f"{bold}{red}╚══════════════════════════════════════╝{reset}")
         print(json.dumps({"pending": True, "queue": queue}))
